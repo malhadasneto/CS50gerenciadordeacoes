@@ -7,9 +7,9 @@ def get_quote(stock):
     with requests.Session() as s:
         try:
             content = str(s.get(url).content)
-            print(content)
             name_start = content.find('<div class="ZINbbc xpd O9g5cc uUPGi"><div class="kCrYT"><span><span class="BNeawe tAd8D AP7Wnd">')+96
             name_end = content.find('</span></span><span class="BNeawe s3v9rd AP7Wnd"> /')
+            print(content, name_end, name_start)
             if name_end - name_start > 60:
                 return "ERROR_01"
             info.append(content[name_start:name_end])

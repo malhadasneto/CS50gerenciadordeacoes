@@ -65,6 +65,7 @@ def get_quote(stock):
             content = str(s.get(url).content)
             name_start = content.find('<div class="ZINbbc xpd O9g5cc uUPGi"><div class="kCrYT"><span><span class="BNeawe tAd8D AP7Wnd">')+96
             name_end = content.find('</span></span><span class="BNeawe s3v9rd AP7Wnd"> /')
+            print(content[name_start:name_end])
             if name_end - name_start > 60:
                 return "ERROR_01"
             info.append(content[name_start:name_end])
@@ -73,7 +74,6 @@ def get_quote(stock):
         except Exception as e:
             print(e)
             print(stock, "stock", name_start, name_end)
-            print(content)
             return "ERROR_02"
 
         return info
