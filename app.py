@@ -175,7 +175,6 @@ def update():
                               "danger")
                         return render_template("update.html")
                 else:
-                    print(check_shortsell, 'IDENTIFICANDO ERRO')
                     if check_shortsell[0][0] and check_shortsell[0][0] < 0:
                         flash(
                             f"""Erro! Você está vendido em {symbol} em {check_shortsell[0][0]}. Selecione a opção "Compra" e "Operação Descoberta". A quantidade de "Venda" deve ser a mesma da "Compra". Pode ser necessário recadastrar "compra" ou "venda" em duas operações. Para conferir, clique no link Histórico""",

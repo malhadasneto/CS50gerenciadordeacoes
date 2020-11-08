@@ -1,23 +1,24 @@
-import psycopg2
-DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true"
+import requests
+import re
 
+def get_quote(stock):
+    url = "https://www.google.com/search?q=bvmf:"+stock
+    info = []
+    with requests.Session() as s:
+        try:
+            content = str(s.get(url).content)
+            print(content)
+            name_start = content.find('<div class="ZINbbc xpd O9g5cc uUPGi"><div class="kCrYT"><span><span class="BNeawe tAd8D AP7Wnd">')+96
+            name_end = content.find('</span></span><span class="BNeawe s3v9rd AP7Wnd"> /')
+            if name_end - name_start > 60:
+                return "ERROR_01"
+            info.append(content[name_start:name_end])
+            stock_quotation = re.findall('\d\d*,\d\d <', content)
+            info.append(stock_quotation[0][:-2])
 
-conn = psycopg2.connect(DATABASE_URL)
-cur = conn.cursor()
-name = 'Banco BTG Pactual SA Brazilian Units'
-symbol = 'BPAC11'
-shares = 100
-price = 79.95
-total = -7995.0
-transacted = '2020-07-06'
-trade_type = 0
-id = 1
+        except Exception as e:
+            print(e)
+            return "ERROR_02"
+        return info
 
-cur.execute("""INSERT INTO HISTORY (name, symbol, shares, price, total, transacted, daytrade, id) 
-                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (name, symbol, shares, price, total, transacted,
-                                                                   trade_type, id))
-conn.commit()
-
-
-conn.close()
-
+print(get_quote("sapr11"))
