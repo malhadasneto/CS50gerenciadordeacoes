@@ -245,7 +245,7 @@ def calculate_tax(id):
                 (id, transacted[0:7], daytrade_a, daytrade_b))
             last_tax = cur.fetchall()
             print(last_tax, "LAST_TAX", transacted[0:7], "TRANSACTED")
-            if len(last_tax) > 0 and last_tax[0][0] > 0:
+            if len(last_tax) > 0 and last_tax[0][0] and last_tax[0][0] > 0:
                 last_tax = last_tax[0][0]
             else:
                 last_tax = 0
