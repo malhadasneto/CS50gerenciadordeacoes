@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Atualizar carteira
+{% endblock %}
+{% block main %}
+<h5><b>Etapa 1</b></h5><h6>Compra e venda de ações</h6>
+<center>
+<form action="/update" method="post">
+<table>
+  <tr align="left">
+    <div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="buyorsell" id="buy" value="1" checked>
+      <label class="form-check-label" for="buy">Compra</label></div>
+<div class="form-check form-check-inline">
+  <input class="form-check-input" type="radio" name="buyorsell" id="sell" value="-1">
+  <label class="form-check-label" for="sell">Venda</label>
+</div></tr><br>
+    <tr>
+    <div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="trade_type" id="regular" value="0" checked>
+      <label class="form-check-label" for="buy">Operação comum</label></div>
+<div class="form-check form-check-inline">
+  <input class="form-check-input" type="radio" name="trade_type" id="daytrade" value="1">
+  <label class="form-check-label" for="sell">Day Trade</label>
+</div>
+<div class="form-check form-check-inline">
+  <input class="form-check-input" type="radio" name="trade_type" id="shortsell" value="-1">
+  <label class="form-check-label" for="sell">Operação Descoberta</label>
+</div>
+    </tr>
+
+     <tr>
+              <th>Data: </th>
+              <td>            <small><input autofocus name="transacted_quote" placeholder="Valor por ação" type="date" required></small><br>
+</td>
+            </tr>
+            <tr>
+              <th>Cód da Ação: </th>
+              <td>            <input autofocus maxlength="16" size="8" name="symbol" placeholder="BVMF" type="text" required><br>
+</td>
+            </tr>
+            <tr>
+              <th>Unidades: </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" name="shares" placeholder="0" type="text" required><br>
+</td>
+            </tr>
+                        <tr>
+              <th>Preço/Un (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" name="price" placeholder="0,00" type="text" required><br>
+</td>
+            </tr>
+        </table>
+    <p></p><button class="btn btn-primary btn-sm" type="submit" id="button_1">Salvar</button>
+    </form>
+
+        <hr>
+        <form action="/update" method="post">
+            <h5><b>Etapa 2</b></h5><h6>Custos de fechamento do dia<br>
+            <small>*Verifique Nota de Negociação</small></h6>
+
+        <table>
+            <tr style="text-align=left">
+
+              <th>Data do Pregão: </th>
+              <td>            <small><input autofocus name="transacted" placeholder="Valor por ação" type="date"></small><br>
+</td>
+            </tr>
+            <tr>
+              <th>Taxa de Liquidação (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" id="custos1" name="custos1" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+            <tr>
+              <th>Emolumentos (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" id="custos2" name="custos2" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+                        <tr>
+              <th>Taxa Operacional (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" id="custos3" name="custos3" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+                        <tr>
+              <th>Impostos (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" id="custos4" name="custos4" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+                        <tr>
+              <th>IRRF (R$): </th>
+              <td>            <input autocomplete="off" autofocus maxlength="16" size="8" id="custos5" name="custos5" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+                                    <tr>
+              <th>Outros (R$): </th>
+              <td>            <input autofocus autocomplete="off" maxlength="16" size="8" id="custos6" name="custos6" placeholder="0,00" type="text"><br>
+</td>
+            </tr>
+
+        </table>
+            <p></p><button class="btn btn-primary btn-sm" type="submit" id="button_2">Salvar</button>
+    </form>
+
+
+    <h6>
+    {% if name %} A share of {{ name }} ({{ symbol }}) costs ${{ price }}
+
+    <p></p>
+    <form action="/quote" id="formhowmany" method="post">
+        <div class="form-group">
+            <input type="number" min="1" id="howmany" name="howmany" placeholder="How many shares?" />
+
+            <input class="btn btn-success btn-sm" onclick="return temp(1)" type="submit" name="buy" value="Buy">  <input class="btn btn-warning btn-sm" type="submit" onclick="return temp(-1)" name="sell" value="Sell">
+    </div></form>{% endif %}
+
+<script>
+if (window.history.replaceState ) {
+        window.history.replaceState( null, null, window.location.href );
+    }
+</script>
+{% endblock %}
+

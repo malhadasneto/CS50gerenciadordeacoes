@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Log In
+{% endblock %}
+
+{% block main %}
+    <h5 style="color:blue;" align='center'>Seja bem-vindo!</h5>
+
+    <form action="/login" method="post">
+        <div class="form-group">
+            <input autocomplete="on" id="username" autofocus class="form-control-login" name="username" placeholder="E-mail" type="text">
+        </div>
+        <div class="form-group">
+            <input id="password" class="form-control-login" name="password" placeholder="Senha" type="password">
+        </div>
+        <button class="btn btn-primary" type="submit" id="login" disabled=true>Entrar</button>
+
+    </form>
+
+    <a class="small text-center text-muted" href="/reset">Ops! Esqueci minha senha!</a><br>
+    <a class="small text-center text-muted" href="/register">Ainda não fez o cadastro? Clique aqui!</>
+
+
+    <script>
+        function validateFill(){
+            if ((document.getElementById("username").value) && (document.getElementById("password").value)) {
+                document.getElementById("login").disabled = false;
+            }
+            else{
+                document.getElementById("login").disabled = true;
+            }
+        }
+        document.getElementById("username").onkeyup = validateFill;
+        document.getElementById("password").onkeyup = validateFill;
+
+
+
+    </script>
+{% endblock %}

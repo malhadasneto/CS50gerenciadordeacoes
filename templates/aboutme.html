@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Sobre o site
+{% endblock %}
+{% block main %}
+<h5><b>Sobre o App</b></h5>
+
+<p align="left">Olá a todos!<br><br>
+
+Desenvolvi esse aplicativo web para traders que atuam no mercado de ações do Brasil - [B] ³, anteriormente conhecido como BVMF. De acordo com as leis federais, todo investidor deve, mensalmente, calcular e recolher via DARF o IRPF sobre o lucro - 15% para as negociações normais e 20% para day trade. Há isenção (exceto Day Trade) caso as vendas não ultrapassem R$20 mil no mês.
+<br><br>O problema é: as regras podem ficar complicadas e não existe um serviço oficial onde os traders possam verificar o valor a pagar. Sim, humanos estão indo para Marte, mas traders precisam calcular (e pagar) os impostos por conta própria. E para cada erro de cálculo cometido, o governo cobrará uma multa durante o período da declaração de Imposto de Renda.
+Por uma taxa, algumas corretoras oferecem o serviço de cálculo de impostos, enquanto outras preferem evitar assumir qualquer responsabilidade. Como small player, sei que cada centavo economizado é um centavo a ser investido. Então, decidi iniciar este aplicativo.
+    <br><br>Como inspiração e ponto de partida, tenho usado há seis meses uma planilha feita pela equipe do Carteira Rica <a href = https://carteirarica.com.br/carteira-de-acoes/>carteirarica.com.br/carteira-de-acoes</a>. Sempre senti falta de um recurso que me ajudasse com negociações de day trade e a operações descobertas, então estou muito feliz por ter encontrado uma maneira de adicionar esses recursos ao meu aplicativo. Para praticar o que aprendi durante o curso CS50, escrevi o programa em Flask / Python e Sqlite3. Estou usando o sistema de login / hash fornecido pelo curso para o projeto “Finanças”, com algumas pequenas melhorias como uma opção de “redefinir senha”.
+<br><br>
+Como usar o app? É muito simples:
+<br><br>
+• Registre um e-mail e uma senha (por motivos de segurança, a senha não é armazenada em texto simples)
+<br>• Registrar toda operação de compra / venda, com o código da ação correto, preço negociado e o dia de negociação.
+<br>    Isso é importante porque para efeito de cálculo do imposto, o lucro deve ser calculado pelo valor “bruto” (venda menos preço de compra), menos despesas operacionais.
+
+<br><br>Vamos destacar as funcionalidades deste aplicativo!
+
+<br><br>• É grátis.
+<br>• Os usuários podem ver o histórico de todas as operações.
+<br>• Os usuários podem acompanhar uma lista de ações em carteira, com o desempenho atual.
+<br>• Cálculo de impostos:
+<br>• O aplicativo divide proporcionalmente as despesas, registrando em cada negociação de acordo com as regras.
+<br>• O aplicativo lembra dos “meses ruins”, então prejuízos podem ser usados para reduzir o imposto dos meses lucrativos.
+<br>• O aplicativo informará ao usuário quanto imposto deve ser pago a cada mês.
+
+<br><br>Se encontrar qualquer erro, não deixe de me avisar!
+
+    <br><br><a href="mailto:zaninmalhadas@gmail.com">Julio Neto, 2020</a>
+
+{% endblock %}
+

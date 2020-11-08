@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Carteira
+
+{% endblock %}
+
+{% block main %}
+<h6><a href="#carteira">Carteira de Ações</a> | <a href="#impostos">Lucro/Impostos</a>
+<hr>
+<h5 style="color:blue">Carteira de Ações</h5>
+<table class="table table-striped" id="carteira">
+    <thead>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col">Código</th>
+          <th scope="col">Ações</th>
+          <th scope="col">Preço Médio</th>
+          <th scope="col">Total investido</th>
+          <th scope="col">Cotação Atual</th>
+          <th scope="col">Performance(*)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if _wallet %}
+        {% for line in _wallet %}
+        <tr>
+            {% for l in line %}
+                <td class="values">
+                    {% if l == None %}N/A
+                    {% elif loop.index == 5 %}{{ l }}
+                    {% elif "-" in l %}<font color="#ff0000">{{ l }}</font>
+                    {% else %}{{l}}{% endif %}</td>
+            {% endfor %}
+        {% endfor %}
+        </tr>
+        {% else %}
+        {% endif %}
+</table>
+<p align="right">(*) Cálculo sem impostos</p>
+
+<h5 style="color:blue">Lucro/Impostos</h5>
+<table class="table table-striped" id="impostos">
+    <thead>
+        <tr>
+          <th scope="col">Mês</th>
+          <th scope="col">Lucro</th>
+          <th scope="col">Créditos - Regular Trade</th>
+          <th scope="col">Créditos - Day Trade</th>
+          <th scope="col">Vendas(*) </th>
+          <th scope="col">Imposto a Pagar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if tax %}
+        {% for value in tax |reverse %}
+        <tr>
+          {% for v in value %}
+            <td class="values">
+              {% if v == 0 %}-
+              {% elif loop.index != 2 %}{{ v }}
+              {% elif "-" in v %}<font color="#ff0000">{{ v }}</font>
+              {% else %}{{v}}{% endif %}</td>
+            {% endfor %}
+        {% endfor %}
+        </tr>
+        {% else %}
+        {% endif %}
+</table>
+<p align="right">(*) Lembre-se: até R$20.000, IRPF é zero (exceto Day Trade)</p>
+
+
+{% endblock %}
+
+

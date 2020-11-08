@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Register
+{% endblock %}
+
+{% block main %}
+    <h5 style="color:blue;" align='center'>Faça seu cadastro:</h5>
+    <form id="register" action="/register" method="post">
+        <div class="form-group">
+            <input autocomplete="off" id="username" autofocus class="form-control-login" name="username" placeholder="E-mail" type="text">
+        </div>
+        <div class="form-group">
+            <input id="password" class="form-control-login" name="password" placeholder="Senha" autocomplete="off" type="password">
+        </div>
+        <div class="form-group">
+            <input id="confirm_password" class="form-control-login" name="confirm_password" placeholder="Redigite a senha" autocomplete="off" type="password">
+        </div>
+        <button class="btn btn-primary" id="submit" type="submit" disabled=true>Confirmar</button>
+    </form>
+
+
+
+    <script>
+
+        let username = document.getElementById("username");
+        let password = document.getElementById("password");
+        let confirm_password = document.getElementById("confirm_password");
+
+        function validatePassword(){
+          if(password.value != confirm_password.value) {
+            confirm_password.setCustomValidity("As senhas não conferem");
+          } else if (password.value.length < 6) {
+            confirm_password.setCustomValidity("A senha deve ter pelo menos 6 caracteres");
+          }
+          else {
+            confirm_password.setCustomValidity('');
+          }
+        }
+
+        function validateFill(){
+            if ((username.value) && (password.value) && (username.value.indexOf("@") !== -1) && (username.value.length > 4)) {
+                document.getElementById("submit").disabled = false;
+            }
+            else{
+                document.getElementById("submit").disabled = true;
+            }
+        }
+        username.onkeyup = validateFill;
+        password.onkeyup = validateFill;
+        password.onchange = validatePassword;
+        confirm_password.onkeyup = validatePassword;
+
+    if (window.history.replaceState ) {
+        window.history.replaceState( null, null, window.location.href );
+    }
+
+    </script>
+{% endblock %}

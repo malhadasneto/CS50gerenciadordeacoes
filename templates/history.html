@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Histórico
+{% endblock %}
+
+{% block main %}
+<h5 style="color:blue">Histórico de Negociações</h5>
+<h6><a href="#acoes">Ações</a> | <a href="#despesas">Despesas</a>
+<hr>
+<table class="table table-striped" id="acoes">
+    <thead><h5 style="color:blue">Ações</h5>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col">Código</th>
+          <th scope="col">Ações</th>
+          <th scope="col">Preço</th>
+          <th scope="col">Total</th>
+          <th scope="col">Data</th>
+          <th scope="col">Daytrade?</th>
+
+        </tr>
+      </thead>
+      <tbody>
+        {% if history %}
+        {% for line in history %}
+        <tr>
+            {% for l in line %}
+                <td>
+                    {% if l == None %}-
+                    {% elif loop.index == 4 or loop.index == 5 %}{{l | convert_to_br_cents}}
+                    {% elif loop.index == 7 and l == 1  %}Sim
+                    {% elif loop.index == 7 and l != 1  %}Não
+                    {% elif loop.index == 8 %}
+                        <form action="/history" name="{{l[1]}}" method="post" value="{{l[1]}}">
+                        <INPUT TYPE="hidden" NAME="deletehistory" value="{{l}}">
+                        <button type="submit" class="btn btn-danger btn-sm">Apagar</button></form>
+                    {% else %}{{l}}{% endif %}
+                </td>
+            {% endfor %}
+        {% endfor %}
+        </tr>
+        {% else %}
+        {% endif %}
+</table>
+
+<hr>
+<table class="table table-striped" id="despesas">
+    <thead><h5 style="color:blue">Despesas</h5>
+        <tr>
+          <th scope="col">Data</th>
+          <th scope="col">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if expenses %}
+        {% for line in expenses %}
+        <tr>
+            {% for l in line %}
+                <td>
+                    {% if l == None %}-
+                    {% elif loop.index == 2 %}{{l | convert_to_br_cents}}
+                    {% elif loop.index == 3 %}
+                        <form action="/history" method="post">
+                        <INPUT TYPE="hidden" NAME="deleteexpense" value="{{l}}">
+                        <button type="submit" class="btn btn-danger btn-sm">Apagar</button></form>
+                    {% else %}{{l}}{% endif %}
+                </td>
+            {% endfor %}
+        {% endfor %}
+        </tr>
+        {% else %}
+        {% endif %}
+</table>
+
+{% endblock %}
