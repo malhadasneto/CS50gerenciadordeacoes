@@ -13,8 +13,7 @@ def update_expenses_regular_trade(id):
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         cur.execute("SELECT SUM(abs(shares)) FROM history WHERE id=%s AND transacted = %s", (id, transacted[t][0]))
-        sum_shares = cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id, ))
-        print(sum_shares,"sumshares")
+        sum_shares = cur.fetchall()
         per_share = transacted[t][1]/sum_shares[0][0]
         cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",(per_share, id, transacted[t][0]))
         conn.commit()
@@ -25,8 +24,6 @@ def update_expenses_regular_trade(id):
         cur = conn.cursor()
         cur.execute("SELECT control, shares, price FROM history WHERE id = %s AND transacted = %s",
                     (id, transacted[t][0]))
-        conn.commit()
-        conn.close()
         shares_to_update = cur.fetchall()
         for x in range(len(shares_to_update)):
             control = shares_to_update[x][0]
