@@ -97,6 +97,8 @@ def build_my_wallet(id):
         symbol = _temp_wallet[x][0]
         avg_price = brl(_temp_wallet[x][2])
         current_value = brl(_temp_wallet[x][3])
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
         cur.execute("SELECT name FROM history WHERE symbol = %s", (symbol,))
         name = cur.fetchone()[0]
         conn.close()
