@@ -16,7 +16,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import apology, login_required, reload_symbols, add_symbol, get_quote, build_my_wallet, update_current_stocks
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'ul!H(QLNP=kr("VFL,)~'
+app.config['SECRET_KEY'] = 'ul!H(QLNP=kr("VFL'
 app.config['SQLALCHEMY_DATABASE_URL'] = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
 
 # Ensure templates are auto-reloaded
@@ -31,7 +31,6 @@ def after_request(response):
     return response
 
 # Configure session to use filesystem (instead of signed cookies)
-app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
