@@ -225,7 +225,7 @@ def calculate_tax(id):
         transactions = cur.fetchall()
 
         for t in range(len(transactions)):
-            transacted = transactions[t][0][0:7]
+            transacted = transactions[t][0]
             # # first, get tax from the last month, if it´s positive, it´s a credit. if not, = 0
             # last_tax_trade = ""
             # last_tax_year = transacted[0:4]
@@ -242,7 +242,7 @@ def calculate_tax(id):
             #
             cur.execute(
                 "SELECT tax FROM tax WHERE id = %s AND month < %s AND (daytrade = %s OR daytrade = %s) ORDER BY month DESC",
-                (id, transacted, daytrade_a, daytrade_b))
+                (id, transacted[0:7], daytrade_a, daytrade_b))
             last_tax = cur.fetchall()
             if len(last_tax) > 0 and last_tax[0][0] > 0:
                 last_tax = last_tax[0][0]
