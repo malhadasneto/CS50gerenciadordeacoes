@@ -269,7 +269,7 @@ def calculate_tax(id):
                 current_tax = temp_current_tax[0][0]
 
             #brazilian law: up to R$20.000 in sales, investor is exempt from payment of tax, except for daytrade
-            if daytrade !=1 and current_tax < 0:
+            if daytrade !=1 and current_tax and current_tax < 0:
                 cur.execute(
                     "SELECT sum(total) FROM history WHERE id=%s AND shares<0 AND daytrade !=1 AND transacted BETWEEN %s AND %s",
                     (id, transacted[:-2] + "01", transacted[:-3] + "31"))
