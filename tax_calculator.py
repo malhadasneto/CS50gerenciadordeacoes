@@ -278,7 +278,8 @@ def calculate_tax(id):
                     if current_tax < 0:
                         current_tax = 0
 
-            current_tax += last_tax
+            if current_tax and last_tax:
+                current_tax += last_tax
 
             cur.execute("UPDATE tax SET tax = %s WHERE month = %s AND id = %s AND daytrade = %s",
                          (current_tax, transacted[:-3], id, daytrade))
