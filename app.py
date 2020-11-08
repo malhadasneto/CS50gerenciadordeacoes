@@ -1,4 +1,6 @@
 import re
+import os
+import psycopg2
 import sqlite3
 import secrets
 from send_mail import send_mail
@@ -7,6 +9,7 @@ from datetime import datetime
 from tax_calculator import calculate_tax, update_expenses_regular_trade, history_avg_price, tax_for_html
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
+from flask_sqlalchemy import SQLAlchemy
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -14,6 +17,7 @@ from helpers import apology, login_required, reload_symbols, add_symbol, get_quo
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'ul!H(QLNP=kr("VFL,)~'
+app.config['SQLALCHEMY_DATABASE_URL'] = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
 
 # Ensure templates are auto-reloaded
 app.config["TEMPLATES_AUTO_RELOAD"] = True
@@ -33,7 +37,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Configure database, create .db if it doesn't exist
-conn = sqlite3.connect("stocks.db")
+DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true"
+conn = psycopg2.connect(DATABASE_URL)
 config_db(conn)
 
 # Load symbols
@@ -45,7 +50,8 @@ symbols = reload_symbols()
 @login_required
 def my_wallet():
     id = session["user_id"]
-    conn = sqlite3.connect("stocks.db")
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
     #update expenses
     update_expenses_regular_trade(id)
@@ -58,7 +64,8 @@ def my_wallet():
 
     #show tax > month credito_rt credito_dt total a pagar
     tax = tax_for_html(id)
-    check_missing_daytrades = conn.execute("SELECT SUM(shares) FROM history WHERE id = ? AND daytrade = 1", (id, )).fetchall()
+    cur.execute("SELECT SUM(shares) FROM history WHERE id = %s AND daytrade = 1", (id,))
+    check_missing_daytrades = cur.fetchall()
     if check_missing_daytrades[0][0] and check_missing_daytrades[0][0] != 0:
         flash(f"Atenção: você possui operações de Daytrade não finalizadas", "warning")
 
@@ -76,41 +83,46 @@ def my_wallet():
 def history():
     """Show history of transactions"""
     id = session["user_id"]
-    conn = sqlite3.connect("stocks.db")
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
     #if user ordered to delete something
     if request.method == "POST":
 
         if request.form.get("deletehistory"):
             delete = int(request.form.get("deletehistory"))
-            transacted = conn.execute("SELECT transacted FROM history WHERE control=?",(delete, )).fetchall()
-            conn.execute("DELETE FROM history WHERE control=?", (delete, ))
+            cur.execute("SELECT transacted FROM history WHERE control=%s", (delete,))
+            transacted = cur.fetchall()
+            cur.execute("DELETE FROM history WHERE control=%s", (delete, ))
             conn.commit()
 
             #check if transacted(expenses) still have transacted(history), otherwise delete transacted(expenses)
-            transacted_history = conn.execute("SELECT transacted FROM history WHERE id=? AND transacted=?", (id, transacted[0][0])).fetchall()
+            cur.execute("SELECT transacted FROM history WHERE id=%s AND transacted=%s", (id, transacted[0][0]))
+            transacted_history = cur.fetchall()
             if not transacted_history:
                 try:
-                    conn.execute("DELETE from expenses WHERE id=? and transacted=?", (id, transacted[0][0])).fetchall()
+                    cur.execute("DELETE from expenses WHERE id=%s and transacted=%s", (id, transacted[0][0])).fetchall()
                     conn.commit()
                 except:
                     pass
 
         elif request.form.get("deleteexpense"):
             delete = int(request.form.get("deleteexpense"))
-            conn.execute("DELETE FROM expenses WHERE control=?", (delete, ))
+            cur.execute("DELETE FROM expenses WHERE control=%s", (delete, ))
             conn.commit()
 
         #If user deletes anything, we have to drop all tax rows
-        conn.execute("DELETE from tax WHERE id=?", (id, ))
+        cur.execute("DELETE from tax WHERE id=%s", (id, ))
         conn.commit()
 
-    history = conn.execute(
-            "SELECT name, symbol, shares, price, total, transacted, daytrade, control FROM history WHERE id = ? ORDER BY transacted DESC, control DESC",
-            (id, )).fetchall()
-    expenses = conn.execute(
-            "SELECT transacted, expenses, control FROM expenses WHERE id = ? ORDER BY transacted DESC, control DESC",
-            (id, )).fetchall()
+    cur.execute(
+        "SELECT name, symbol, shares, price, total, transacted, daytrade, control FROM history WHERE id = %s ORDER BY transacted DESC, control DESC",
+        (id,))
+    history = cur.execute("SELECT transacted FROM history WHERE id=%s AND transacted=%s", (id, transacted[0][0]))
+    cur.execute(
+        "SELECT transacted, expenses, control FROM expenses WHERE id = %s ORDER BY transacted DESC, control DESC",
+        (id,))
+    expenses = cur.fetchall()
 
     conn.close()
     return render_template("history.html", history=history, expenses=expenses)
@@ -122,6 +134,9 @@ def history():
 @login_required
 def update():
     id = session["user_id"]
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
     global symbols
     expenses = 0.00
 
@@ -142,20 +157,19 @@ def update():
             #check daytrade
 
             if trade_type != 1:
-                conn = sqlite3.connect("stocks.db")
-                check_daytrade = conn.execute("SELECT shares FROM history WHERE id = ? AND symbol = ? AND transacted = ?",
-                                             (id, symbol, transacted)).fetchall()
-                conn.close()
+                conn = psycopg2.connect(DATABASE_URL)
+                cur.execute("SELECT shares FROM history WHERE id = %s AND symbol = %s AND transacted = %s",
+                            (id, symbol, transacted))
+                check_daytrade = cur.fetchall()
                 for i in range(len(check_daytrade)):
                     if shares * buyorsell * check_daytrade[i][0] < 0:
                         flash("Atenção! Você já adicionou uma negociação para o mesmo dia marcada como 'Operação Comum'. Verifique se está correto para evitar erro de cálculo de imposto", "warning")
 
             #check if symbol is current negative, if yes, purchasing must be exactly same units
             if buyorsell == 1:
-                conn = sqlite3.connect("stocks.db")
-                check_shortsell = conn.execute("SELECT sum(shares) FROM current_stocks WHERE id = ? AND symbol = ?",
-                                             (id, symbol)).fetchall()
-                conn.close()
+                cur.execute("SELECT sum(shares) FROM current_stocks WHERE id = %s AND symbol = %s",
+                            (id, symbol))
+                check_shortsell = cur.fetchall()
                 # check if it´s exactly value to cover short sell
                 if trade_type == -1:
                     if not check_shortsell[0][0]:
@@ -163,7 +177,8 @@ def update():
                               "danger")
                         return render_template("update.html")
                 else:
-                    if check_shortsell[0][0] < 0:
+                    print(check_shortsell, 'IDENTIFICANDO ERRO')
+                    if check_shortsell[0][0] and check_shortsell[0][0] < 0:
                         flash(
                             f"""Erro! Você está vendido em {symbol} em {check_shortsell[0][0]}. Selecione a opção "Compra" e "Operação Descoberta". A quantidade de "Venda" deve ser a mesma da "Compra". Pode ser necessário recadastrar "compra" ou "venda" em duas operações. Para conferir, clique no link Histórico""",
                             "danger")
@@ -176,10 +191,9 @@ def update():
                         Lembre-se de marcar a opção "Operação Descoberta" tanto para Compra quanto para Venda""", "danger")
                     return render_template("update.html")
 
-            conn = sqlite3.connect("stocks.db")
-            check_temp = conn.execute("SELECT SUM(shares) FROM history WHERE id = ? AND symbol = ? AND transacted <= ?",
-                                         (id, symbol, transacted)).fetchall()
-            conn.close()
+            cur.execute("SELECT SUM(shares) FROM history WHERE id = %s AND symbol = %s AND transacted <= %s",
+                        (id, symbol, transacted))
+            check_temp = cur.fetchall()
 
             #regular case, you cant´sell more than you already have
             if trade_type != -1 and buyorsell == -1:
@@ -194,7 +208,6 @@ def update():
 No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
                     return render_template("update.html")
 
-
             #check if symbol exist b4 return error
             if symbol not in symbols:
                     _temp = get_quote(symbol)
@@ -202,6 +215,7 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
                         flash("Código não encontrado. Verifique e tente novamente", "danger")
                         return render_template("update.html")
                     else:
+                        name = (_temp[0])
                         add_symbol(_temp[0], symbol)
                         symbols = reload_symbols()
 
@@ -219,12 +233,13 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
                 return render_template("update.html")
 
             if price > 0.0 and shares != 0:
-                conn = sqlite3.connect("stocks.db")
-                conn.execute("""INSERT INTO HISTORY (name, symbol, shares, price, total, transacted, daytrade, id) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (name, symbol, shares, price, total, transacted,
+                conn = psycopg2.connect(DATABASE_URL)
+                cur = conn.cursor()
+
+                cur.execute("""INSERT INTO HISTORY (name, symbol, shares, price, total, transacted, daytrade, id) 
+                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (name, symbol, shares, price, total, transacted,
                                                                    trade_type, id))
                 conn.commit()
-                conn.close()
 
                 flash("Registrado com sucesso!", "success")
 
@@ -236,15 +251,15 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
         else:
             #check date
             transacted = request.form.get("transacted")
-            if transacted > datetime.today().strftime('%Y-%m-%d'):
+            if transacted > datetime.today().strftime('%sY-%sm-%sd'):
                 flash("Data inválida. Verifique e tente novamente", "danger")
                 return render_template("update.html")
 
             #check if in this day there is expenses registered; or if zero stocks traded
-            conn = sqlite3.connect("stocks.db")
-            check_history = conn.execute("SELECT transacted FROM history WHERE id = ? AND transacted = ?", (id, transacted)).fetchall()
-            check_expenses = conn.execute("SELECT transacted, expenses FROM expenses WHERE id = ? AND transacted = ?", (id, transacted)).fetchall()
-            conn.close()
+            cur.execute("SELECT transacted FROM history WHERE id = %s AND transacted = %s", (id, transacted))
+            check_history = cur.fetchall()
+            cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s AND transacted = %s", (id, transacted))
+            check_expenses = cur.fetchall()
 
             if len(check_history) < 1:
                 flash("Erro! Não há nenhum trade registrado nesse dia", "danger")
@@ -264,25 +279,25 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
                         flash("Erro! Utilize apenas número ou número + vírgula (0,00)", "danger")
                         return render_template("update.html")
 
-            conn = sqlite3.connect("stocks.db")
-            conn.execute("""INSERT INTO expenses (transacted, expenses, id) 
-                          VALUES (?, ?, ?)""", (transacted, expenses, id))
+            cur.execute("""INSERT INTO expenses (transacted, expenses, id) 
+                          VALUES (%s, %s, %s)""", (transacted, expenses, id))
             conn.commit()
-            conn.close()
             flash("Registrado com sucesso!", "success")
 
     #check daytrade not finished
-    conn = sqlite3.connect("stocks.db")
-    get_dt_symbols = conn.execute("SELECT DISTINCT symbol FROM history WHERE id = ? AND daytrade = 1",
-                                 (id, )).fetchall()
+    cur.execute("SELECT DISTINCT symbol FROM history WHERE id = %s AND daytrade = 1",
+                (id,))
+    get_dt_symbols = cur.fetchall()
     for i in range(len(get_dt_symbols)):
         symbol = get_dt_symbols[i][0]
-        check_dt_not_finished = conn.execute("SELECT SUM(shares) FROM history WHERE id = ? AND symbol = ? AND daytrade = 1",
-                                 (id, symbol)).fetchall()
+        cur.execute("SELECT SUM(shares) FROM history WHERE id = %s AND symbol = %s AND daytrade = 1",
+                    (id, symbol))
+        check_dt_not_finished = cur.fetchall()
         if check_dt_not_finished and check_dt_not_finished[0][0] != 0:
             flash(f"Operação de daytrade de {symbol} ainda não foi concluída", "warning")
             break
 
+    conn.close()
     return render_template("update.html")
 
 
@@ -290,13 +305,16 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
 def login():
     # Forget any user_id
     session.clear()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
 
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
 
         # Query database for username
-        conn = sqlite3.connect("stocks.db")
-        rows = conn.execute("SELECT * FROM users WHERE username = ?", ([request.form.get("username").lower()])).fetchall()
+        cur.execute("SELECT * FROM users WHERE username = %s", ([request.form.get("username").lower()]))
+        rows = cur.fetchall()
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0][2], request.form.get("password")):
             flash ("Erro! E-mail não cadastrado ou senha inválida. Verifique e tente novamente", "danger")
@@ -313,37 +331,32 @@ def login():
 
     # User reached route via GET (as by clicking a link or via redirect)
     else:
+        conn.close()
         return render_template("login.html")
-
-
-
-@app.route("/mywallet", methods=["GET", "POST"])
-@login_required
-def mywallet():
-    # Todo: pagina "carteira atual" será mywallet.html, indicando impostos a serem pagos em cada mes, etc
-    pass
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
     if request.method == "POST":
         # Query database for username
         username = (request.form.get("username")).lower()
-        connection = sqlite3.connect("stocks.db")
-        db = connection.cursor()
-        rows = db.execute("SELECT * FROM users WHERE username = (?)", [username]).fetchall()
+        cur.execute("SELECT * FROM users WHERE username = %s", [username])
+        rows = cur.fetchall()
         # Ensure username exists and password is correct
         if len(rows) != 0:
             flash("Email já cadastrado","danger")
-            connection.close()
+            conn.close()
             return render_template("register.html")
 
         password = request.form.get("password")
         hash_password = generate_password_hash(password)
-        db.execute("INSERT INTO USERS (username, hash) VALUES (?,?)", (username, hash_password))
-        connection.commit()
-        connection.close()
+        cur.execute("INSERT INTO USERS (username, hash) VALUES (%s,%s)", (username, hash_password))
+        conn.commit()
+        conn.close()
 
         # Redirect user to home page
         flash ("Cadastro confirmado!","success")
@@ -351,19 +364,23 @@ def register():
 
     # User reached route via GET (as by clicking a link or via redirect)
     else:
+        conn.close()
         return render_template("register.html")
 
 
 
 @app.route("/reset", methods=["GET", "POST"])
 def reset():
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
     if request.method == "POST":
-        conn = sqlite3.connect("stocks.db")
+        conn = psycopg2.connect(DATABASE_URL)
         if request.form.get("reset_token") and request.form.get("reset_username"):
-            reset_key = conn.execute("SELECT reset_key FROM users WHERE username = ?", ([request.form.get("reset_username")])).fetchall()
+            reset_key = cur.execute("SELECT reset_key FROM users WHERE username = %s", ([request.form.get("reset_username")])).fetchall()
             if reset_key[0][0] == request.form.get("reset_token"):
-                conn.execute("UPDATE users SET reset_key = ? WHERE username = ?", ("", request.form.get("reset_username")))
-                conn.execute("UPDATE users SET hash = ? WHERE username = ?", (generate_password_hash(request.form.get("password")), request.form.get("reset_username")))
+                cur.execute("UPDATE users SET reset_key = %s WHERE username = %s", ("", request.form.get("reset_username")))
+                cur.execute("UPDATE users SET hash = %s WHERE username = %s", (generate_password_hash(request.form.get("password")), request.form.get("reset_username")))
                 conn.commit()
                 conn.close()
                 flash("Redefinição de senha concluída com sucesso!", "success")
@@ -374,7 +391,7 @@ def reset():
                 return render_template("reset.html", reset = "true")
 
         else:
-            rows = conn.execute("SELECT * FROM users WHERE username = ?", ([request.form.get("username").lower()])).fetchall()
+            rows = cur.execute("SELECT * FROM users WHERE username = %s", ([request.form.get("username").lower()])).fetchall()
             if len(rows) != 1:
                 conn.close()
                 flash ("Erro! E-mail não cadastrado. Verifique e tente novamente", "danger")
@@ -383,7 +400,7 @@ def reset():
                 token = secrets.token_urlsafe(8)
                 mail = send_mail(request.form.get("username").lower(), token)
                 if mail == 1:
-                    conn.execute("UPDATE users SET reset_key = ? WHERE username = ?", (token, request.form.get("username").lower()))
+                    cur.execute("UPDATE users SET reset_key = %s WHERE username = %s", (token, request.form.get("username").lower()))
                     conn.commit()
                     conn.close()
                     flash ("Em alguns instantes, verifique seu e-mail e copie/cole o código", "success")

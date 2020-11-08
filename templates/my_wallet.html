@@ -57,7 +57,8 @@
         <tr>
           {% for v in value %}
             <td class="values">
-              {% if v == 0 %}-
+              {% if v == 0 %}
+              {% elif v == None %}
               {% elif loop.index != 2 %}{{ v }}
               {% elif "-" in v %}<font color="#ff0000">{{ v }}</font>
               {% else %}{{v}}{% endif %}</td>

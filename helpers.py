@@ -1,10 +1,11 @@
 import re
 import requests
-import sqlite3
-
-
+import psycopg2
 from flask import redirect, render_template, request, session
 from functools import wraps
+
+
+DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true"
 
 def apology(message, code=400):
     """Render message as an apology to user."""
@@ -14,8 +15,8 @@ def apology(message, code=400):
 
         https://github.com/jacebrowning/memegen#special-characters
         """
-        for old, new in [("-", "--"), (" ", "-"), ("_", "__"), ("?", "~q"),
-                         ("%", "~p"), ("#", "~h"), ("/", "~s"), ("\"", "''")]:
+        for old, new in [("-", "--"), (" ", "-"), ("_", "__"), ("%s", "~q"),
+                         ("%s", "~p"), ("#", "~h"), ("/", "~s"), ("\"", "''")]:
             s = s.replace(old, new)
         return s
     return render_template("apology.html", top=code, bottom=escape(message)), code
@@ -36,7 +37,10 @@ def login_required(f):
 
 def brl(value):
     """Format value as BRL."""
-    return (f"R${value:.2f}").replace(".", ",")
+    if value:
+        return (f"R${value:.2f}").replace(".", ",")
+    else:
+        return value
 
 
 def reload_symbols():
@@ -59,9 +63,9 @@ def get_quote(stock):
     with requests.Session() as s:
         try:
             content = str(s.get(url).content)
-            name_start = content.find(stock.upper() + " (") + len(stock) + 2
-            name_end = content.find(") |")
-            if name_end - name_start > 30:
+            name_start = content.find('<div class="ZINbbc xpd O9g5cc uUPGi"><div class="kCrYT"><span><span class="BNeawe tAd8D AP7Wnd">')+96
+            name_end = content.find('</span></span><span class="BNeawe s3v9rd AP7Wnd"> /')
+            if name_end - name_start > 60:
                 return "ERROR_01"
             info.append(content[name_start:name_end])
             stock_quotation = re.findall('\d\d*,\d\d <', content)
@@ -75,17 +79,21 @@ def build_my_wallet(id):
     """For each symbol in current_stock,
     create a list with: name, symbol, shares, avg_price, current_value, performance"""
     wallet = []
-    conn = sqlite3.connect("stocks.db")
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
-    _temp_wallet = conn.execute(
-        "SELECT symbol, shares, avg_price, current_value FROM current_stocks WHERE id = ? ORDER BY symbol",
-        (id,)).fetchall()
+    cur.execute(
+        "SELECT symbol, shares, avg_price, current_value FROM current_stocks WHERE id = %s ORDER BY symbol",
+        (id,))
+    _temp_wallet = cur.fetchall()
 
     for x in range(len(_temp_wallet)):
         symbol = _temp_wallet[x][0]
         avg_price = brl(_temp_wallet[x][2])
         current_value = brl(_temp_wallet[x][3])
-        name = (conn.execute("SELECT name FROM history WHERE symbol = ?", (symbol,)).fetchone())[0]
+        cur.execute("SELECT name FROM history WHERE symbol = %s", (symbol,))
+        name = cur.fetchone()[0]
+        conn.close()
 
         # protection against web search errors:
         try:
@@ -116,24 +124,30 @@ def build_my_wallet(id):
     return wallet
 
 def update_current_stocks(id):
-    conn = sqlite3.connect("stocks.db")
-    conn.execute("DELETE FROM current_stocks WHERE id=?", (id,))
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM current_stocks WHERE id=%s", (id,))
     conn.commit()
-    current_stocks = conn.execute(
-        "SELECT symbol, SUM(shares) FROM history WHERE id=? AND DAYTRADE!=1 GROUP BY symbol ORDER BY symbol",
-        (id,)).fetchall()
+    cur.execute(
+        "SELECT symbol, SUM(shares) FROM history WHERE id=%s AND DAYTRADE!=1 GROUP BY symbol ORDER BY symbol",
+        (id,))
+    current_stocks = cur.fetchall()
     for x in range(len(current_stocks)):
         if current_stocks[x][1] != 0:
             symbol = current_stocks[x][0]
             shares = current_stocks[x][1]
 
             if shares > 0:
-                stock_info = conn.execute("SELECT avg_price, total FROM history WHERE id=? AND symbol=? AND shares>0 ORDER BY transacted DESC, control DESC",
-                                      (id, symbol)).fetchall()
+                cur.execute(
+                    "SELECT avg_price, total FROM history WHERE id=%s AND symbol=%s AND shares>0 ORDER BY transacted DESC, control DESC",
+                    (id, symbol))
+                stock_info = cur.fetchall()
             #special case short sell
             else:
-                stock_info = conn.execute("SELECT avg_price, total FROM history WHERE id=? AND symbol=? AND shares<0 ORDER BY transacted DESC, control DESC",
-                                      (id, symbol)).fetchall()
+                cur.execute(
+                    "SELECT avg_price, total FROM history WHERE id=%s AND symbol=%s AND shares<0 ORDER BY transacted DESC, control DESC",
+                    (id, symbol))
+                stock_info = cur.fetchall()
 
             # for regular case:
             if shares > 0:
@@ -151,7 +165,7 @@ def update_current_stocks(id):
                 avg_price = total / shares * -1
                 current_value = total
 
-            conn.execute("INSERT INTO current_stocks (symbol, shares, id, avg_price, current_value) VALUES (?,?,?,?,?)",
+            cur.execute("INSERT INTO current_stocks (symbol, shares, id, avg_price, current_value) VALUES (%s,%s,%s,%s,%s)",
                          (symbol, shares, id, avg_price, current_value))
             conn.commit()
     conn.close()

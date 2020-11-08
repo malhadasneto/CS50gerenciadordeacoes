@@ -1,23 +1,31 @@
 import sqlite3
 from helpers import brl
+import psycopg2
+
+DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true"
 
 def update_expenses_regular_trade(id):
-    conn = sqlite3.connect("stocks.db")
-    transacted = conn.execute("SELECT transacted, expenses FROM expenses WHERE id = ?", (id, )).fetchall()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id,))
+    transacted = cur.fetchall()
     for t in range(len(transacted)):
-        sum_shares = conn.execute("SELECT SUM(abs(shares)) FROM history WHERE id=? AND transacted = ?",(id, transacted[t][0])).fetchall()
+        cur.execute("SELECT SUM(abs(shares)) FROM history WHERE id=%s AND transacted = %s", (id, transacted[t][0]))
+        sum_shares = cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id, ))
         per_share = transacted[t][1]/sum_shares[0][0]
-        conn.execute("UPDATE expenses SET per_share = ? WHERE id = ? AND transacted = ?",(per_share, id, transacted[t][0])).fetchall()
+        cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",(per_share, id, transacted[t][0]))
         conn.commit()
 
         #update each share in that date (expenses and total)
-        shares_to_update = conn.execute("SELECT control, shares, price FROM history WHERE id = ? AND transacted = ?", (id, transacted[t][0])).fetchall()
+        cur.execute("SELECT control, shares, price FROM history WHERE id = %s AND transacted = %s",
+                    (id, transacted[t][0]))
+        shares_to_update = cur.fetchall()
         for x in range(len(shares_to_update)):
             control = shares_to_update[x][0]
             shares = shares_to_update[x][1]
             price = shares_to_update[x][2]
             expenses = abs(per_share * shares)
-            conn.execute("UPDATE history SET expenses = ?, total = ? WHERE control = ?",
+            cur.execute("UPDATE history SET expenses = %s, total = %s WHERE control = %s",
                          (-1*expenses, -1*((price * shares) + expenses), control))
             conn.commit()
 
@@ -25,32 +33,37 @@ def update_expenses_regular_trade(id):
 
 
 def history_avg_price(id):
-    conn = sqlite3.connect("stocks.db")
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
     #first, special case shortsell daytrade=-1
-    special_cases = conn.execute("SELECT price, control FROM history WHERE shares > 0 AND id=? AND daytrade=-1",(id,)).fetchall()
+    cur.execute("SELECT price, control FROM history WHERE shares > 0 AND id=%s AND daytrade=-1", (id,))
+    special_cases = cur.fetchall()
     for x in range(len(special_cases)):
         avg_price = special_cases[x][0]
         control = special_cases[x][1]
-        conn.execute("UPDATE history SET avg_price = ? WHERE control=?", (avg_price, control))
+        cur.execute("UPDATE history SET avg_price = %s WHERE control=%s", (avg_price, control))
 
     # take information to calc avg_price for regular trade (x==0) and daytrade (x==1)
     for x in range(2):
         # for daytrade logic is different:
         if x == 1:
-            transactions = conn.execute(
-                "SELECT DISTINCT transacted FROM history WHERE id = ? AND daytrade = 1",
-                (id,)).fetchall()
+            cur.execute(
+                "SELECT DISTINCT transacted FROM history WHERE id = %s AND daytrade = 1",
+                (id,))
+            transactions = cur.fetchall()
 
             for transacted in transactions:
-                list_symbols = conn.execute(
-                    "SELECT DISTINCT symbol FROM history WHERE id = ? AND daytrade = 1 AND transacted=?",
-                    (id, transacted[0])).fetchall()
+                cur.execute(
+                    "SELECT DISTINCT symbol FROM history WHERE id = %s AND daytrade = 1 AND transacted=%s",
+                    (id, transacted[0]))
+                list_symbols = cur.fetchall()
 
                 for symbol in list_symbols:
-                    last_loop = conn.execute(
-                        "SELECT shares, total, control from history WHERE id=? AND symbol = ? AND daytrade = 1 AND transacted=? AND shares > 0",
-                        (id, symbol[0], transacted[0])).fetchall()
+                    cur.execute(
+                        "SELECT shares, total, control from history WHERE id=%s AND symbol = %s AND daytrade = 1 AND transacted=%s AND shares > 0",
+                        (id, symbol[0], transacted[0]))
+                    last_loop = cur.fetchall()
 
                     _temp_prices = [0, 0.0, 0.0, []]  # shares, total, avg_price, control
                     for trade in last_loop:
@@ -61,20 +74,22 @@ def history_avg_price(id):
                     # finally...
                     avg_price = _temp_prices[1] / _temp_prices[0]
                     for each_control in _temp_prices[3]:
-                        conn.execute("UPDATE history SET avg_price = ? WHERE control = ?",
+                        cur.execute("UPDATE history SET avg_price = %s WHERE control = %s",
                                      (avg_price * -1, each_control))
                         conn.commit()
 
         # RT only: for each stock, get prices
         else:
-            list_symbols = conn.execute(
-                "SELECT DISTINCT symbol FROM history WHERE id = ? AND daytrade <= 0",
-                (id,)).fetchall()
+            cur.execute(
+                "SELECT DISTINCT symbol FROM history WHERE id = %s AND daytrade <= 0",
+                (id,))
+            list_symbols = cur.fetchall()
             for symbol in list_symbols:
                 _temp_prices = [0, 0.0, 0.0, []]  # shares, total, avg_price, control
-                list_stocks = conn.execute(
-                    "SELECT shares, total, control from history WHERE id=? AND symbol = ? AND daytrade <= 0 ORDER BY transacted, control",
-                    (id, symbol[0],)).fetchall()
+                cur.execute(
+                    "SELECT shares, total, control from history WHERE id=%s AND symbol = %s AND daytrade <= 0 ORDER BY transacted, control",
+                    (id, symbol[0],))
+                list_stocks = cur.fetchall()
 
                 # loop through each symbol to get avg_price. sum all until "share" is zero or less.
                 for j in range(len(list_stocks)):
@@ -90,12 +105,12 @@ def history_avg_price(id):
                     # every time stock == 0 or negative, we need to fix the avg_price for all purchases, store in DB and start a new serie
                     if _temp_prices[0] <= 0:
                         for each_control in _temp_prices[3]:
-                            conn.execute("UPDATE history SET avg_price = ? WHERE control = ?",
+                            cur.execute("UPDATE history SET avg_price = %s WHERE control = %s",
                                          (_temp_prices[2] * -1, each_control))
                             conn.commit()
 
                         # reset current_stock as well if needed (todo: se for short sell tem q inserir no current_stocks em vez de só atualizar)
-                        conn.execute("UPDATE current_stocks SET shares = ? WHERE id = ?", (_temp_prices[0], id))
+                        cur.execute("UPDATE current_stocks SET shares = %s WHERE id = %s", (_temp_prices[0], id))
                         conn.commit()
 
                         _temp_prices = [0, 0.0, 0.0, []]  # reset shares, total, avg_price, control
@@ -103,12 +118,12 @@ def history_avg_price(id):
                 # if loop is over and stock is still positive:
                 if _temp_prices[0] > 0:
                     for each_control in _temp_prices[3]:
-                        conn.execute("UPDATE history SET avg_price = ? WHERE control = ?",
+                        cur.execute("UPDATE history SET avg_price = %s WHERE control = %s",
                                      (_temp_prices[2] * -1, each_control))
                         conn.commit()
 
                     # updating my_wallet
-                    conn.execute("UPDATE current_stocks SET avg_price=?, current_value=? WHERE symbol=? AND id=?",
+                    cur.execute("UPDATE current_stocks SET avg_price=%s, current_value=%s WHERE symbol=%s AND id=%s",
                                  (_temp_prices[2] * -1, _temp_prices[0], symbol[0], id))
                     conn.commit()
 
@@ -116,7 +131,8 @@ def history_avg_price(id):
 
 
 def calculate_tax(id):
-    conn = sqlite3.connect("stocks.db")
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
 
     # first loop, daytrade == 0 (regular) and daytrade == 1
     for i in range(2):
@@ -128,9 +144,10 @@ def calculate_tax(id):
             tax_rate = 0.20
             daytrade_a = daytrade_b = 1
         # first, let´s calculate the tax for each sale.
-        all_trades = conn.execute(
-            "SELECT symbol, shares, total, control, daytrade, transacted, avg_price FROM history WHERE id = ? AND daytrade = ? ORDER BY transacted, control",
-            (id, daytrade)).fetchall()
+        cur.execute(
+            "SELECT symbol, shares, total, control, daytrade, transacted, avg_price FROM history WHERE id = %s AND daytrade = %s ORDER BY transacted, control",
+            (id, daytrade))
+        all_trades = cur.fetchall()
         # dict legend: {symbol: current avg_price}
         _temp_avg_price = {}
 
@@ -147,25 +164,27 @@ def calculate_tax(id):
                 to_tax = total + (shares * _temp_avg_price[symbol])
 
                 #update profit/loss column
-                conn.execute("UPDATE history SET profit = ? WHERE control = ?", (to_tax, control))
+                cur.execute("UPDATE history SET profit = %s WHERE control = %s", (to_tax, control))
                 conn.commit()
 
                 # check profit/loss to calculate tax or keep as a credit
                 if to_tax > 0:
                     to_tax = to_tax * tax_rate
-                conn.execute("UPDATE history SET tax = ? WHERE control = ?", (-1 * to_tax, control))
+                cur.execute("UPDATE history SET tax = %s WHERE control = %s", (-1 * to_tax, control))
                 conn.commit()
 
         # special case - shortsell - becaise we need to consider purchase date not selling date
         # first list symbols daytrade -1
-        shortsell_symbols = conn.execute("SELECT DISTINCT symbol FROM history WHERE id=? AND daytrade=-1",
-                                         (id,)).fetchall()
+        cur.execute("SELECT DISTINCT symbol FROM history WHERE id=%s AND daytrade=-1",
+                    (id,))
+        shortsell_symbols = cur.fetchall()
 
         # second, get all trades for each symbol, create a selling list with index to avoid repetition if there´s more than one purchase
         for x in range(len(shortsell_symbols)):
-            shortsell_trades = conn.execute(
-                "SELECT symbol,shares,total,transacted, control,avg_price,price FROM history WHERE id=? AND daytrade=-1 AND symbol=? ORDER BY transacted, control",
-                (id, shortsell_symbols[x][0])).fetchall()
+            cur.execute(
+                "SELECT symbol,shares,total,transacted, control,avg_price,price FROM history WHERE id=%s AND daytrade=-1 AND symbol=%s ORDER BY transacted, control",
+                (id, shortsell_symbols[x][0]))
+            shortsell_trades = cur.fetchall()
             short_sell_indexes = [i for i, j in enumerate(shortsell_trades) if j[1] <= 0]
             short_sell_sold = short_sell_total = 0
 
@@ -187,15 +206,16 @@ def calculate_tax(id):
                                 tax = profit * 0.15 * -1
                             else:
                                 tax = profit * -1
-                            conn.execute("UPDATE history SET tax=?, profit=? WHERE control=?", (tax, profit, control))
+                            cur.execute("UPDATE history SET tax=%s, profit=%s WHERE control=%s", (tax, profit, control))
                             conn.commit()
                             del short_sell_indexes[0:z + 1]
                             break
 
         # second, now we have to think in months, not sales. and include daytrade = -1 (daytrade_a and b)
-        transactions = conn.execute(
-            "SELECT DISTINCT transacted FROM history WHERE id = ? AND (daytrade = ? OR daytrade = ?) ORDER BY transacted, control",
-            (id, daytrade_a, daytrade_b)).fetchall()
+        cur.execute(
+            "SELECT DISTINCT transacted, transacted, control FROM history WHERE id = %s AND (daytrade = %s OR daytrade = %s) ORDER BY transacted, control",
+            (id, daytrade_a, daytrade_b))
+        transactions = cur.fetchall()
 
         for t in range(len(transactions)):
             transacted = transactions[t][0]
@@ -213,8 +233,9 @@ def calculate_tax(id):
                     last_tax_month = "0" + last_tax_month
             last_tax_date = last_tax_year + "-" + last_tax_month
 
-            last_tax_trade = conn.execute("SELECT tax FROM tax WHERE month = ? AND id = ? AND (daytrade = ? OR daytrade=?) ",
-                                          (last_tax_date, id, daytrade_a, daytrade_b)).fetchall()
+            cur.execute("SELECT tax FROM tax WHERE month = %s AND id = %s AND (daytrade = %s OR daytrade=%s) ",
+                        (last_tax_date, id, daytrade_a, daytrade_b))
+            last_tax_trade = cur.fetchall()
 
             # "negative" tax = you have to pay; "positive" = credit to use.
             if len(last_tax_trade) == 0 or last_tax_trade[0][0] < 0:
@@ -223,18 +244,20 @@ def calculate_tax(id):
                 last_tax = last_tax_trade[0][0]
 
             # third, create a row for the current month if there isn´t one:
-            row_current_table = conn.execute("SELECT * FROM tax WHERE month = ? AND id = ? AND (daytrade = ? or daytrade = ?)",
-                                             (transacted[:-3], id, daytrade_a, daytrade_b)).fetchall()
+            cur.execute("SELECT * FROM tax WHERE month = %s AND id = %s AND (daytrade = %s or daytrade = %s)",
+                        (transacted[:-3], id, daytrade_a, daytrade_b))
+            row_current_table = cur.fetchall()
 
             if len(row_current_table) == 0:
-                conn.execute("INSERT INTO tax (id, Month, Daytrade) VALUES (?, ?, ?)", (id, transacted[:-3], daytrade))
+                cur.execute("INSERT INTO tax (id, Month, Daytrade) VALUES (%s, %s, %s)", (id, transacted[:-3], daytrade))
                 conn.commit()
 
             # forth, add current profit/loss AND tax to db
             current_tax = 0
-            temp_current_tax = conn.execute(
-                "SELECT SUM(tax) FROM history WHERE (daytrade = ? or daytrade = ?) AND transacted BETWEEN ? AND ? AND id = ?",
-                (daytrade_a, daytrade_b, transacted[:-2] + "01", transacted[:-3] + "31", id)).fetchall()
+            cur.execute(
+                "SELECT SUM(tax) FROM history WHERE (daytrade = %s or daytrade = %s) AND transacted BETWEEN %s AND %s AND id = %s",
+                (daytrade_a, daytrade_b, transacted[:-2] + "01", transacted[:-3] + "31", id))
+            temp_current_tax = cur.fetchall()
 
             if temp_current_tax[0][0]:
                 current_tax = temp_current_tax[0][0]
@@ -242,12 +265,14 @@ def calculate_tax(id):
 
             #brazilian law: up to R$20.000 in sales, investor is exempt from payment of tax, except for daytrade
             if daytrade !=1 and current_tax < 0:
-                check_exemption = conn.execute("SELECT sum(total) FROM history WHERE id=? AND shares<0 AND daytrade !=1 AND transacted BETWEEN ? AND ?",
-                (id, transacted[:-2] + "01", transacted[:-3] + "31")).fetchall()
+                cur.execute(
+                    "SELECT sum(total) FROM history WHERE id=%s AND shares<0 AND daytrade !=1 AND transacted BETWEEN %s AND %s",
+                    (id, transacted[:-2] + "01", transacted[:-3] + "31"))
+                check_exemption = cur.fetchall()
                 if check_exemption[0][0] < 20000:
                     current_tax = 0
 
-            conn.execute("UPDATE tax SET tax = ? WHERE month = ? AND id = ? AND daytrade = ?",
+            cur.execute("UPDATE tax SET tax = %s WHERE month = %s AND id = %s AND daytrade = %s",
                          (current_tax, transacted[:-3], id, daytrade))
             conn.commit()
 
@@ -255,8 +280,11 @@ def calculate_tax(id):
 
 #create a dict with taxes (date, rt_credits, dt_credits, tax to pay)
 def tax_for_html(id):
-    conn = sqlite3.connect("stocks.db")
-    tax = conn.execute("SELECT month, daytrade, tax FROM tax WHERE id = ? ORDER BY month", (id,)).fetchall()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
+    cur.execute("SELECT month, daytrade, tax FROM tax WHERE id = %s ORDER BY month", (id,))
+    tax = cur.fetchall()
     # exemple tax_list: {'2020-09': [rt,dt,total, 20klimit]}
     tax_list = {}  # one list for each month
     for x in range(len(tax)):
@@ -274,8 +302,9 @@ def tax_for_html(id):
 
     # inserting profit/loss:
     for transacted in tax_list.keys():
-        profit = conn.execute("SELECT sum(profit) FROM history WHERE transacted BETWEEN ? AND ? AND id = ?",
-                              (transacted + "-01", transacted + "-31", id)).fetchall()
+        cur.execute("SELECT sum(profit) FROM history WHERE transacted BETWEEN %s AND %s AND id = %s",
+                    (transacted + "-01", transacted + "-31", id))
+        profit = cur.fetchall()
         if not profit[0][0]:
             profit = 0
         else:
@@ -285,9 +314,10 @@ def tax_for_html(id):
         tax_list[transacted][3] = profit
 
         # R$20k limit
-        check_exemption = conn.execute(
-            "SELECT sum(total) FROM history WHERE id=? AND shares<0 AND daytrade !=1 AND transacted BETWEEN ? AND ?",
-            (id, transacted + "-01", transacted + "-31")).fetchall()
+        cur.execute(
+            "SELECT sum(total) FROM history WHERE id=%s AND shares<0 AND daytrade !=1 AND transacted BETWEEN %s AND %s",
+            (id, transacted + "-01", transacted + "-31"))
+        check_exemption = cur.fetchall()
         tax_list[transacted][4] = check_exemption[0][0]
 
     conn.close()
