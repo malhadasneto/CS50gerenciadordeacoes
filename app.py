@@ -248,7 +248,7 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
         else:
             #check date
             transacted = request.form.get("transacted")
-            if transacted > datetime.today().strftime('%sY-%sm-%sd'):
+            if transacted > datetime.today().strftime('%Y-%m-%d'):
                 flash("Data inválida. Verifique e tente novamente", "danger")
                 return render_template("update.html")
 
