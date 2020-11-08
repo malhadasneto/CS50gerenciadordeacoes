@@ -305,7 +305,10 @@ def tax_for_html(id):
             tax_list[month] = [0, 0, 0, 0, 0]
 
         # if credit (positive) insert in index 0 if regular trade, 1 if dt
-        if current_tax and current_tax > 0:
+        if not current_tax:
+            current_tax = 0
+
+        if current_tax > 0:
             tax_list[month][daytrade] = current_tax
         else:
             tax_list[month][2] = tax_list[month][2] + current_tax
