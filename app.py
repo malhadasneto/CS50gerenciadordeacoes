@@ -118,12 +118,11 @@ def history():
     cur.execute(
         "SELECT name, symbol, shares, price, total, transacted, daytrade, control FROM history WHERE id = %s ORDER BY transacted DESC, control DESC",
         (id,))
-    history = cur.execute("SELECT transacted FROM history WHERE id=%s AND transacted=%s", (id, transacted[0][0]))
+    history = cur.fetchall()
     cur.execute(
         "SELECT transacted, expenses, control FROM expenses WHERE id = %s ORDER BY transacted DESC, control DESC",
         (id,))
     expenses = cur.fetchall()
-
     conn.close()
     return render_template("history.html", history=history, expenses=expenses)
 
