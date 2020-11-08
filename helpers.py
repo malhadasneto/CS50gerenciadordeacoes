@@ -72,8 +72,8 @@ def get_quote(stock):
             info.append(stock_quotation[0][:-2])
         except Exception as e:
             print(e)
-            print(stock, "stock")
-            print("content")
+            print(stock, "stock", name_start, name_end)
+            print(content)
             return "ERROR_02"
 
         return info
