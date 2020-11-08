@@ -1,26 +1,27 @@
 import requests
 import re
+import psycopg2
 
-def get_quote(stock):
-    url = "https://www.google.com/search?q=bvmf:"+stock
-    info = []
-    with requests.Session() as s:
-        try:
-            content = str(s.get(url).content)
-            name_start = content.find('<div class="ZINbbc xpd O9g5cc uUPGi"><div class="kCrYT"><span><span class="BNeawe tAd8D AP7Wnd">')+96
-            name_end = content.find('</span></span><span class="BNeawe s3v9rd AP7Wnd"> /')
-            print(content, name_end, name_start)
-            if name_end - name_start > 60:
-                return "ERROR_01"
-            info.append(content[name_start:name_end])
-            stock_quotation = re.findall('\d\d*,\d\d <', content)
-            if not stock_quotation:
-                stock_quotation = re.findall('\d\d*.\d\d <', content)
-            info.append(stock_quotation[0][:-2])
+DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d0377a3be6c727635f0b3f458edbb@ec2-34-234-185-150.compute-1.amazonaws.com:5432/dcoqc4i24nrr8h?ssl=true"
 
-        except Exception as e:
-            print(e)
-            return "ERROR_02"
-        return info
+# second, now we have to think in months, not sales. and include daytrade = -1 (daytrade_a and b)
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
+daytrade = daytrade_a = daytrade_b = 1
+id = 1
 
-print(get_quote("sapr11"))
+cur.execute(
+    "SELECT DISTINCT transacted, transacted, control FROM history WHERE id = %s AND (daytrade = %s OR daytrade = %s) ORDER BY transacted, control",
+    (id, daytrade_a, daytrade_b))
+transactions = cur.fetchall()
+
+for t in range(len(transactions)):
+    transacted = transactions[t][0][0:7]
+    cur.execute(
+    "SELECT tax FROM tax WHERE id = %s AND month < %s AND (daytrade = %s OR daytrade = %s) ORDER BY month DESC",
+        (id, transacted, daytrade_a, daytrade_b))
+    last_tax = cur.fetchall()
+    if len(last_tax) > 0 and last_tax[0][0] > 0:
+        last_tax = last_tax[0][0]
+    else:
+         last_tax = 0

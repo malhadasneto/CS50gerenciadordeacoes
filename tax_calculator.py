@@ -225,30 +225,29 @@ def calculate_tax(id):
         transactions = cur.fetchall()
 
         for t in range(len(transactions)):
-            transacted = transactions[t][0]
-            # first, get tax from the last month, if it´s positive, it´s a credit. if not, = 0
-            last_tax_trade = ""
-            last_tax_year = transacted[0:4]
-            last_tax_month = transacted[5:7]
-            # last month adjustment (january - 1 = december):
-            if last_tax_month == "01":
-                last_tax_year = str(int(last_tax_year) - 1)
-                last_tax_month = str(12)
+            transacted = transactions[t][0][0:7]
+            # # first, get tax from the last month, if it´s positive, it´s a credit. if not, = 0
+            # last_tax_trade = ""
+            # last_tax_year = transacted[0:4]
+            # last_tax_month = transacted[5:7]
+            # # last month adjustment (january - 1 = december):
+            # if last_tax_month == "01":
+            #     last_tax_year = str(int(last_tax_year) - 1)
+            #     last_tax_month = str(12)
+            # else:
+            #     last_tax_month = str(int(last_tax_month) - 1)
+            #     if int(last_tax_month) < 10:
+            #         last_tax_month = "0" + last_tax_month
+            # last_tax_date = last_tax_year + "-" + last_tax_month
+            #
+            cur.execute(
+                "SELECT tax FROM tax WHERE id = %s AND month < %s AND (daytrade = %s OR daytrade = %s) ORDER BY month DESC",
+                (id, transacted, daytrade_a, daytrade_b))
+            last_tax = cur.fetchall()
+            if len(last_tax) > 0 and last_tax[0][0] > 0:
+                last_tax = last_tax[0][0]
             else:
-                last_tax_month = str(int(last_tax_month) - 1)
-                if int(last_tax_month) < 10:
-                    last_tax_month = "0" + last_tax_month
-            last_tax_date = last_tax_year + "-" + last_tax_month
-
-            cur.execute("SELECT tax FROM tax WHERE month = %s AND id = %s AND (daytrade = %s OR daytrade=%s) ",
-                        (last_tax_date, id, daytrade_a, daytrade_b))
-            last_tax_trade = cur.fetchall()
-
-            # "negative" tax = you have to pay; "positive" = credit to use.
-            if len(last_tax_trade) == 0 or last_tax_trade[0][0] < 0:
                 last_tax = 0
-            else:
-                last_tax = last_tax_trade[0][0]
 
             # third, create a row for the current month if there isn´t one:
             cur.execute("SELECT * FROM tax WHERE month = %s AND id = %s AND (daytrade = %s or daytrade = %s)",
@@ -266,9 +265,8 @@ def calculate_tax(id):
                 (daytrade_a, daytrade_b, transacted[:-2] + "01", transacted[:-3] + "31", id))
             temp_current_tax = cur.fetchall()
 
-            if temp_current_tax[0][0]:
+            if len(temp_current_tax) > 0:
                 current_tax = temp_current_tax[0][0]
-            current_tax += last_tax
 
             #brazilian law: up to R$20.000 in sales, investor is exempt from payment of tax, except for daytrade
             if daytrade !=1 and current_tax < 0:
@@ -277,7 +275,10 @@ def calculate_tax(id):
                     (id, transacted[:-2] + "01", transacted[:-3] + "31"))
                 check_exemption = cur.fetchall()
                 if check_exemption[0][0] < 20000:
-                    current_tax = 0
+                    if current_tax < 0:
+                        current_tax = 0
+
+            current_tax += last_tax
 
             cur.execute("UPDATE tax SET tax = %s WHERE month = %s AND id = %s AND daytrade = %s",
                          (current_tax, transacted[:-3], id, daytrade))

@@ -263,6 +263,7 @@ No momento, você tem {check_temp[0][0]} un. de {symbol}:""", "danger")
                 return render_template("update.html")
             elif len(check_expenses) != 0:
                 flash("Erro! Já há registro de despesas para esse dia. Delete acessando a aba 'histórico'", "danger")
+                return render_template("update.html")
 
             #sum expenses
             for n in range (1,7):
