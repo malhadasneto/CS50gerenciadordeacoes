@@ -10,21 +10,31 @@ def update_expenses_regular_trade(id):
     cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id,))
     transacted = cur.fetchall()
     for t in range(len(transacted)):
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
         cur.execute("SELECT SUM(abs(shares)) FROM history WHERE id=%s AND transacted = %s", (id, transacted[t][0]))
         sum_shares = cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id, ))
+        print(sum_shares,"sumshares")
         per_share = transacted[t][1]/sum_shares[0][0]
         cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",(per_share, id, transacted[t][0]))
         conn.commit()
+        conn.close()
 
         #update each share in that date (expenses and total)
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
         cur.execute("SELECT control, shares, price FROM history WHERE id = %s AND transacted = %s",
                     (id, transacted[t][0]))
+        conn.commit()
+        conn.close()
         shares_to_update = cur.fetchall()
         for x in range(len(shares_to_update)):
             control = shares_to_update[x][0]
             shares = shares_to_update[x][1]
             price = shares_to_update[x][2]
             expenses = abs(per_share * shares)
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
             cur.execute("UPDATE history SET expenses = %s, total = %s WHERE control = %s",
                          (-1*expenses, -1*((price * shares) + expenses), control))
             conn.commit()
