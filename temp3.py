@@ -14,6 +14,8 @@ def get_quote(stock):
                 return "ERROR_01"
             info.append(content[name_start:name_end])
             stock_quotation = re.findall('\d\d*,\d\d <', content)
+            if not stock_quotation:
+                stock_quotation = re.findall('\d\d*.\d\d <', content)
             info.append(stock_quotation[0][:-2])
 
         except Exception as e:
