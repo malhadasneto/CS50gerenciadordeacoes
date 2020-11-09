@@ -59,7 +59,7 @@
         <tr>
           <th scope="col">Mês</th>
           <th scope="col">Lucro</th>
-          <th scope="col">Vendas(*) </th>
+          <th scope="col">Vendas Regular Trade(*) </th>
           <th scope="col">Imposto a Pagar</th>
         </tr>
       </thead>
@@ -70,7 +70,7 @@
           {% for v in value %}
             <td class="values">
               {% if v == 0 %}
-              {% elif v == None %}
+              {% elif v == None %}-
               {% elif loop.index != 2 %}{{ v }}
               {% elif "-" in v %}<font color="#ff0000">{{ v }}</font>
               {% else %}{{v}}{% endif %}</td>
