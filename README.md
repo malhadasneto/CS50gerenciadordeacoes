@@ -3,10 +3,14 @@ Hi all!
 
 Welcome to my CS50 Final Project: "Easy Tax B3".
 
-I have developed this web app for traders who operate in the Brazilian stock market - [B]³, previously known as BVMF.  According to the federal laws, people whose operations in a single month exceed R$20,000 (twenty thousand reais) must pay taxes over profit –15% for regular trades. Daytrades are always taxed in 20%. 
+This web app is for traders who operate in the Brazilian stock market - [B]³, previously known as BVMF.  According to the federal laws, people whose operations in a single month exceed R$20,000 (twenty thousand reais) must pay taxes over profit – 15% for regular trades, 20% for day trades. 
+
 The problem is: rules can be tricky and there is no official service where traders can check the amount to be paid. Yes, humans are going to Mars but traders have to calculate (and pay) taxes by themselves. And for each mistake or miscalculation made, the government will charge a penalty fee during the period of the Income Tax Return.
+
 For a fee, some stock exchange agencies will offer the service, while others prefer to avoid taking any responsibility for that. As a small trader myself, I know that each cent saved is a cent to be invested. So I decided to start this app.
+
 As inspiration and the starting point, I have been using a Google Spreadsheet made by Carteira Rica team (https://carteirarica.com.br/carteira-de-acoes/)  for 6 months now. I miss especially a feature to help me with day trades, so I am really glad that I´ve found a way to add this feature to my app.
+
 For purposes of practicing what I learned during the CS50 Course, I wrote the program in Flask/Python and Sqlite3. I am using the login/hash system provided by the course for the “Finance” project, with some minor improvements like a “reset password” option.
 
 How to use the app? It is very simple:
@@ -51,3 +55,6 @@ Finally, I would like to thank Harvard and Mr. David J. Malan for such amazing c
 And, most of all, I am grateful for the courage they gave me to start this late change in my professional life!
 
 I hope you enjoy my app. If you find any errors, please let me know (zaninmalhadas@gmail.com)! See ya!
+
+Julio Neto
+Brazil/2020

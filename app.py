@@ -1,7 +1,5 @@
 import re
-import os
 import psycopg2
-import sqlite3
 import secrets
 from send_mail import send_mail
 from db_schema import config_db
@@ -9,8 +7,6 @@ from datetime import datetime
 from tax_calculator import calculate_tax, update_expenses_regular_trade, history_avg_price, tax_for_html
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
-from flask_sqlalchemy import SQLAlchemy
-from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import apology, login_required, reload_symbols, add_symbol, get_quote, build_my_wallet, update_current_stocks
@@ -63,6 +59,7 @@ def my_wallet():
 
     #show tax > month credito_rt credito_dt total a pagar
     tax = tax_for_html(id)
+
 
     # adjusting for better view
     if len(tax) > 0:

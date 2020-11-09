@@ -66,6 +66,7 @@
       <tbody>
         {% if tax %}
         {% for value in tax |reverse %}
+        {% if value[loop.index][2] != 0 %}
         <tr>
           {% for v in value %}
             <td class="values">
@@ -78,6 +79,7 @@
         {% endfor %}
         </tr>
         {% else %}
+        {% endif %}
         {% endif %}
 </table>
 <p align="right">(*) Lembre-se: até R$20.000, IRPF é zero (exceto Day Trade)</p>
