@@ -39,7 +39,6 @@ def update_expenses_regular_trade(id):
             cur = conn.cursor()
             cur.execute("UPDATE history SET expenses = %s, total = %s WHERE control = %s",
                         (-1 * expenses, -1 * ((price * shares) + expenses), control))
-            print('exp, total:', -1 * expenses, -1 * ((price * shares) + expenses))
             conn.commit()
             conn.close()
 

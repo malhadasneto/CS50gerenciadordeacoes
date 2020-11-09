@@ -67,5 +67,14 @@ def tax_for_html(id):
 
     return tax_list_final
 
-a=tax_for_html(1)
-print(a)
+tax = tax_for_html(1)
+
+# adjusting for better view
+if len(tax) > 0:
+    tax_credit = tax[-1][2:4]
+else:
+    tax_credit = None
+for x in range(len(tax)):
+    del tax[x][2:4]
+
+print(tax)

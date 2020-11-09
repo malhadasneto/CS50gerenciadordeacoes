@@ -67,7 +67,6 @@ def my_wallet():
     else:
         tax_credit = None
     for x in range(len(tax)):
-        print(tax[x])
         del tax[x][2:4]
 
     cur.execute("SELECT SUM(shares) FROM history WHERE id = %s AND daytrade = 1", (id,))
