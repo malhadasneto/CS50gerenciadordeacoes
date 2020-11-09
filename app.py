@@ -65,7 +65,10 @@ def my_wallet():
     tax = tax_for_html(id)
 
     # adjusting for better view
-    tax_credit = tax[-1][2:4]
+    if len(tax) > 0:
+        tax_credit= tax[-1][2:4]
+    else:
+        tax_credit = None
     for x in range(len(tax)):
         print(tax[x])
         del tax[x][2:4]
