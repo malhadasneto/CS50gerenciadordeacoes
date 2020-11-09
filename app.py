@@ -63,6 +63,13 @@ def my_wallet():
 
     #show tax > month credito_rt credito_dt total a pagar
     tax = tax_for_html(id)
+
+    # adjusting for better view
+    tax_credit = tax[-1][2:4]
+    for x in range(len(tax)):
+        print(tax[x])
+        del tax[x][2:4]
+
     cur.execute("SELECT SUM(shares) FROM history WHERE id = %s AND daytrade = 1", (id,))
     check_missing_daytrades = cur.fetchall()
     if check_missing_daytrades[0][0] and check_missing_daytrades[0][0] != 0:
@@ -75,7 +82,7 @@ def my_wallet():
     _wallet = build_my_wallet(id)
 
     conn.close()
-    return render_template("my_wallet.html", _wallet = _wallet, tax = tax)
+    return render_template("my_wallet.html", _wallet = _wallet, tax = tax, tax_credit=tax_credit)
 
 @app.route("/history", methods=["GET", "POST"])
 @login_required

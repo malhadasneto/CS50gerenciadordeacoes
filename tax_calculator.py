@@ -220,36 +220,21 @@ def calculate_tax(id):
 
         # second, now we have to think in months, not sales. and include daytrade = -1 (daytrade_a and b)
         cur.execute(
-            "SELECT DISTINCT transacted, transacted, control FROM history WHERE id = %s AND (daytrade = %s OR daytrade = %s) ORDER BY transacted, control",
-            (id, daytrade_a, daytrade_b))
+            "SELECT DISTINCT transacted, transacted, control FROM history WHERE id = %s ORDER BY transacted, control",
+            (id, ))
         transactions = cur.fetchall()
 
         for t in range(len(transactions)):
             transacted = transactions[t][0]
-            # # first, get tax from the last month, if it´s positive, it´s a credit. if not, = 0
-            # last_tax_trade = ""
-            # last_tax_year = transacted[0:4]
-            # last_tax_month = transacted[5:7]
-            # # last month adjustment (january - 1 = december):
-            # if last_tax_month == "01":
-            #     last_tax_year = str(int(last_tax_year) - 1)
-            #     last_tax_month = str(12)
-            # else:
-            #     last_tax_month = str(int(last_tax_month) - 1)
-            #     if int(last_tax_month) < 10:
-            #         last_tax_month = "0" + last_tax_month
-            # last_tax_date = last_tax_year + "-" + last_tax_month
-            #
+
             cur.execute(
                 "SELECT tax FROM tax WHERE id = %s AND month < %s AND (daytrade = %s OR daytrade = %s) ORDER BY month DESC",
                 (id, transacted[0:7], daytrade_a, daytrade_b))
             last_tax = cur.fetchall()
-            print(last_tax, "LAST_TAX", transacted[0:7], "TRANSACTED")
             if len(last_tax) > 0 and last_tax[0][0] and last_tax[0][0] > 0:
                 last_tax = last_tax[0][0]
             else:
                 last_tax = 0
-
             # third, create a row for the current month if there isn´t one:
             cur.execute("SELECT * FROM tax WHERE month = %s AND id = %s AND (daytrade = %s or daytrade = %s)",
                         (transacted[:-3], id, daytrade_a, daytrade_b))
@@ -265,7 +250,6 @@ def calculate_tax(id):
                 "SELECT SUM(tax) FROM history WHERE (daytrade = %s or daytrade = %s) AND transacted BETWEEN %s AND %s AND id = %s",
                 (daytrade_a, daytrade_b, transacted[:-2] + "01", transacted[:-3] + "31", id))
             temp_current_tax = cur.fetchall()
-
             if len(temp_current_tax) > 0:
                 current_tax = temp_current_tax[0][0]
 
@@ -279,9 +263,12 @@ def calculate_tax(id):
                     if current_tax < 0:
                         current_tax = 0
 
-            if current_tax and last_tax:
-                current_tax += last_tax
+            if not current_tax:
+                current_tax = 0
+            if not last_tax:
+                last_tax = 0
 
+            current_tax += last_tax
             cur.execute("UPDATE tax SET tax = %s WHERE month = %s AND id = %s AND daytrade = %s",
                          (current_tax, transacted[:-3], id, daytrade))
             conn.commit()

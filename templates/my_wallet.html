@@ -40,13 +40,25 @@
 <p align="right">(*) Cálculo sem impostos</p>
 
 <h5 style="color:blue">Lucro/Impostos</h5>
-<table class="table table-striped" id="impostos">
+  <table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">Créditos Regular Trade</th>
+      <th scope="col">Créditos Day Trade</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>{{tax_credit[0]}}</td>
+      <td>{{tax_credit[1]}}</td>
+    </tr>
+  </table>
+
+  <table class="table table-striped" id="impostos">
     <thead>
         <tr>
           <th scope="col">Mês</th>
           <th scope="col">Lucro</th>
-          <th scope="col">Créditos - Regular Trade</th>
-          <th scope="col">Créditos - Day Trade</th>
           <th scope="col">Vendas(*) </th>
           <th scope="col">Imposto a Pagar</th>
         </tr>
