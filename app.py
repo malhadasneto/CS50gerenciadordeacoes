@@ -384,24 +384,26 @@ def reset():
 
     if request.method == "POST":
         conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+
         if request.form.get("reset_token") and request.form.get("reset_username"):
             reset_key = cur.execute("SELECT reset_key FROM users WHERE username = %s", ([request.form.get("reset_username")])).fetchall()
             if reset_key[0][0] == request.form.get("reset_token"):
-                cur.execute("UPDATE users SET reset_key = %s WHERE username = %s", ("", request.form.get("reset_username")))
-                cur.execute("UPDATE users SET hash = %s WHERE username = %s", (generate_password_hash(request.form.get("password")), request.form.get("reset_username")))
+                cur.execute("UPDATE users SET reset_key = %s, hash = %s WHERE username = %s", ('', generate_password_hash(request.form.get('password')), request.form.get('reset_username')))
                 conn.commit()
                 conn.close()
                 flash("Redefinição de senha concluída com sucesso!", "success")
                 return render_template("login.html")
             else:
                 flash("Erro! Código inválido. Verifique e tente novamente", "danger")
-                conn.close()
                 return render_template("reset.html", reset = "true")
 
         else:
-            rows = cur.execute("SELECT * FROM users WHERE username = %s", ([request.form.get("username").lower()])).fetchall()
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM users WHERE username = %s", ([request.form.get("username").lower()]))
+            rows = cur.fetchall()
             if len(rows) != 1:
-                conn.close()
                 flash ("Erro! E-mail não cadastrado. Verifique e tente novamente", "danger")
                 return render_template('reset.html')
             else:
@@ -414,7 +416,6 @@ def reset():
                     flash ("Em alguns instantes, verifique seu e-mail e copie/cole o código", "success")
                     return render_template("reset.html", reset = "true") #sopraverseéesseologin
                 else:
-                    conn.close()
                     flash("Ocorreu um erro. Tente de novo. Persistindo o erro, entre em contato", "alert")
     else:
         return render_template("reset.html")
