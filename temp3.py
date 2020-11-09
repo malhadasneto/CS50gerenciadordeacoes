@@ -9,15 +9,40 @@ DATABASE_URL = "postgres://rtugygfqnqcauo:2aeaa614dc46d36a0f3fe19e55269d96386d03
 conn = psycopg2.connect(DATABASE_URL)
 cur = conn.cursor()
 daytrade = daytrade_a = daytrade_b = 1
-id = 1
+id = 2
 
-tax = [['2020-04', 'R$-183,73', 0, 'R$183,73', None, 0], ['2020-07', 0, 0, 'R$183,73', None, 0], ['2020-08', 0, 0, 'R$183,73', None, 0], ['2020-09', 'R$-2104,63', 'R$2708,24', 'R$178,79', 'R$36630,27', 0], ['2020-10', 'R$-4895,86', 'R$7771,66', 'R$178,79', 'R$35843,00', 0]]
-tax_credit = tax[-1][2:4]
+cur.execute("SELECT transacted, expenses FROM expenses WHERE id = %s", (id,))
+transacted = cur.fetchall()
+for t in range(len(transacted)):
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    expenses = transacted[t][1]
+    total_op = 0
+    cur.execute("SELECT price, shares, control FROM history WHERE id=%s AND transacted = %s", (id, transacted[t][0]))
+    _price_shares = cur.fetchall()
+    for x in range(len(_price_shares)):
+        total_op += _price_shares[x][0] * abs(_price_shares[x][1])
+    per_share = expenses/total_op
+    cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",
+                (per_share, id, transacted[t][0]))
+    conn.commit()
+    conn.close()
 
-
-#create a dict with taxes (date, rt_credits, dt_credits, tax to pay)
-# for t in tax_list:
-#     _temp_tax_list_final = [t, brl(tax_list[t][3]), brl(tax_list[t][0]), brl(tax_list[t][1]), brl(tax_list[t][4]),
-#                             brl(tax_list[t][2])]
-#     tax_list_final.append(_temp_tax_list_final)
-#t =transacted,  profit taxlistt3, credrt tax0, creddt tax1,
+    #update each share in that date (expenses and total)
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("SELECT control, shares, price FROM history WHERE id = %s AND transacted = %s",
+                (id, transacted[t][0]))
+    shares_to_update = cur.fetchall()
+    for x in range(len(shares_to_update)):
+        control = shares_to_update[x][0]
+        shares = shares_to_update[x][1]
+        price = shares_to_update[x][2]
+        expenses = abs(per_share * shares * price)
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("UPDATE history SET expenses = %s, total = %s WHERE control = %s",
+                    (-1 * expenses, -1 * ((price * shares) + expenses), control))
+        print('exp, total:', -1 * expenses, -1 * ((price * shares) + expenses))
+        conn.commit()
+        conn.close()

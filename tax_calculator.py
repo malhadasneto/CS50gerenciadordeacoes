@@ -12,14 +12,20 @@ def update_expenses_regular_trade(id):
     for t in range(len(transacted)):
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("SELECT SUM(abs(shares)) FROM history WHERE id=%s AND transacted = %s", (id, transacted[t][0]))
-        sum_shares = cur.fetchall()
-        per_share = transacted[t][1]/sum_shares[0][0]
-        cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",(per_share, id, transacted[t][0]))
+        expenses = transacted[t][1]
+        total_op = 0
+        cur.execute("SELECT price, shares, control FROM history WHERE id=%s AND transacted = %s",
+                    (id, transacted[t][0]))
+        _price_shares = cur.fetchall()
+        for x in range(len(_price_shares)):
+            total_op += _price_shares[x][0] * abs(_price_shares[x][1])
+        per_share = expenses / total_op
+        cur.execute("UPDATE expenses SET per_share = %s WHERE id = %s AND transacted = %s",
+                    (per_share, id, transacted[t][0]))
         conn.commit()
         conn.close()
 
-        #update each share in that date (expenses and total)
+        # update each share in that date (expenses and total)
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         cur.execute("SELECT control, shares, price FROM history WHERE id = %s AND transacted = %s",
@@ -29,14 +35,14 @@ def update_expenses_regular_trade(id):
             control = shares_to_update[x][0]
             shares = shares_to_update[x][1]
             price = shares_to_update[x][2]
-            expenses = abs(per_share * shares)
+            expenses = abs(per_share * shares * price)
             conn = psycopg2.connect(DATABASE_URL)
             cur = conn.cursor()
             cur.execute("UPDATE history SET expenses = %s, total = %s WHERE control = %s",
-                         (-1*expenses, -1*((price * shares) + expenses), control))
+                        (-1 * expenses, -1 * ((price * shares) + expenses), control))
+            print('exp, total:', -1 * expenses, -1 * ((price * shares) + expenses))
             conn.commit()
-
-    conn.close()
+            conn.close()
 
 
 def history_avg_price(id):
