@@ -379,16 +379,16 @@ def register():
 
 @app.route("/reset", methods=["GET", "POST"])
 def reset():
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor()
 
     if request.method == "POST":
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
 
         if request.form.get("reset_token") and request.form.get("reset_username"):
-            reset_key = cur.execute("SELECT reset_key FROM users WHERE username = %s", ([request.form.get("reset_username")])).fetchall()
-            if reset_key[0][0] == request.form.get("reset_token"):
+            cur.execute("SELECT reset_key FROM users WHERE username = %s", ([request.form.get("reset_username")]))
+            reset_key = cur.fetchall()
+
+            if len(reset_key) > 0 and reset_key[0][0] == request.form.get("reset_token"):
                 cur.execute("UPDATE users SET reset_key = %s, hash = %s WHERE username = %s", ('', generate_password_hash(request.form.get('password')), request.form.get('reset_username')))
                 conn.commit()
                 conn.close()

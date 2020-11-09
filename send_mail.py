@@ -1,7 +1,6 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from flask import url_for
 
 def send_mail(username, token):
     mail_content = '''Gerenciador de Ações - Código para redefinição de senha\n 
