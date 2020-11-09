@@ -9,7 +9,7 @@ def send_mail(username, token):
 
     #The mail addresses and password
     sender_address = 'zaninmalhadas@gmail.com'
-    sender_pass = 'deacavalo'
+    sender_pass = 'rmtbtvvclquiiqng'
     receiver_address = username
     #Setup the MIME
     message = MIMEMultipart()
